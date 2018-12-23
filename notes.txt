@@ -1,0 +1,2 @@
+https://discourse.threejs.org/t/rotate-object-at-end-point/2190
+rotation epicness
