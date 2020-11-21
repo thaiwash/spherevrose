@@ -19892,8 +19892,9 @@
 				if ( texture.version > 0 && textureProperties.__version !== texture.version ) {
 
 					if ( ! textureProperties.__image__webglTextureCube ) {
-
-						texture.addEventListener( 'dispose', onTextureDispose );
+						if (typeof texture.addEventListener === "function") {
+							texture.addEventListener( 'dispose', onTextureDispose );
+						}
 
 						textureProperties.__image__webglTextureCube = _gl.createTexture();
 

@@ -14,10 +14,10 @@ var WEBVR = {
 			button.style.display = '';
 
 			button.style.cursor = 'pointer';
-			button.style.left = 'calc(50% - 50px)';
-			button.style.width = '100px';
+			button.style.left = 'calc(40% - 50px)';
+			button.style.width = '50px';
 
-			button.textContent = 'ENTER VR';
+			button.textContent = 'VR';
 
 			button.onmouseenter = function () { button.style.opacity = '1.0'; };
 			button.onmouseleave = function () { button.style.opacity = '0.5'; };
@@ -26,6 +26,8 @@ var WEBVR = {
 
 				display.isPresenting ? display.exitPresent() : display.requestPresent( [ { source: renderer.domElement } ] );
 
+				window.dispatchEvent(new CustomEvent('entervr'));
+				console.log("entering VR")
 			};
 
 			renderer.vr.setDevice( display );

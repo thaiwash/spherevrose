@@ -2,7 +2,23 @@
 
 todo: calibrate controllers
 
+
+THREEx.Util = {
+	getSceneParent: function() (object) {
+		while(object.parent.type != "Scene") {
+			object = object.parent;
+		}
+		return object
+	}
+}
+
+OS.socket.emit("write file", {data: JSON.stringify(OS.scene.toJSON()).toString();
 */
+var THREEx = {};
+const RIGHT = 0;
+const LEFT = 1;
+
+
 
 class Controller {
 	constructor() {
@@ -12,116 +28,34 @@ class Controller {
         this.RIGHT_HAND = 0
         this.LEFT_HAND = 1
 		var self = this
-
+		this.nearestObject = [false, false]
+		this.grabbableObjects = [];
 
 		// radius, segments along width, segments along height
 		var sphereGeom =  new THREE.SphereGeometry(
             40/1000, 32/1000, 32/1000
         )
 
-		// math sphere
-		this.mathSphere = [
-            new THREE.Sphere(new THREE.Vector3(), 40/1000),
-            new THREE.Sphere(new THREE.Vector3(), 40/1000)
-        ]
+		this.multiMathSphere = new THREE.Sphere(new THREE.Vector3(), 40/1000);
 
 
 		// overlapping translucent red/green/blue spheres
 		var greenMaterial = new THREE.MeshBasicMaterial(
-            { color: 0x0000FF, transparent: true, opacity: 0.1 }
+            { color: 0x00FF00, transparent: true, opacity: 0.5 }
         )
         greenMaterial.depthWrite = false
-		var greenMaterialGrabbing = new THREE.MeshBasicMaterial(
-            { color: 0x0000FF, transparent: true, opacity: 0.2 }
-        )
-        greenMaterialGrabbing.depthWrite = false
-		var sphere = new THREE.Mesh( sphereGeom.clone(), greenMaterial )
 
-		this.controllerSphere = [
-			new THREE.Mesh( sphereGeom.clone(), greenMaterial ),
-			new THREE.Mesh( sphereGeom.clone(), greenMaterial )
+		this.sphere = [
+			new THREE.Mesh( sphereGeom.clone(), greenMaterial.clone() ),
+			new THREE.Mesh( sphereGeom.clone(), greenMaterial.clone() )
 		]
-		this.scene.add( this.controllerSphere[0] )
-		this.scene.add( this.controllerSphere[1] )
-
-		this.controllerGrabbingSphere = [
-			new THREE.Mesh( sphereGeom.clone(), greenMaterialGrabbing ),
-			new THREE.Mesh( sphereGeom.clone(), greenMaterialGrabbing )
-		]
-		this.scene.add( this.controllerGrabbingSphere[0] )
-		this.scene.add( this.controllerGrabbingSphere[1] )
-
-		this.controllerGrabbingSphere[0].visible = false
-		this.controllerGrabbingSphere[1].visible = false
-
-/* -0.08394855260848999, -0.06598687171936035, -0.06598687171936035
-
-*/
-
-        this.pointingSphere = [
-        	new THREE.Mesh( sphereGeom.clone(), greenMaterial ),
-        	new THREE.Mesh( sphereGeom.clone(), greenMaterial )
-    	]
-    	this.scene.add( this.pointingSphere[0] )
-        this.scene.add( this.pointingSphere[1] )
-
-        this.pointingSphere[0].updateMatrixWorld()
-        this.pointingSphere[0].position.x =
-            this.pointingSphere[0].position.x - 0.08394855260848999
-        this.pointingSphere[0].position.y =
-            this.pointingSphere[0].position.y - 0.06598687171936035
-        this.pointingSphere[0].position.z =
-            this.pointingSphere[0].position.z - 0.06598687171936035
-
-        this.pointingSphere[1].updateMatrixWorld()
-        this.pointingSphere[1].position.x =
-            this.pointingSphere[1].position.x - 0.08394855260848999
-        this.pointingSphere[1].position.y =
-            this.pointingSphere[1].position.y - 0.06598687171936035
-        this.pointingSphere[1].position.z =
-            this.pointingSphere[1].position.z - 0.06598687171936035
-
-        this.pointingSphere[0].updateMatrixWorld()
-        this.controllerSphere[0].updateMatrixWorld()
-        THREE.SceneUtils.attach(
-            this.pointingSphere[0],
-            this.scene,
-            this.controllerSphere[0]
-        )
-        this.pointingSphere[1].updateMatrixWorld()
-        this.controllerSphere[1].updateMatrixWorld()
-        THREE.SceneUtils.attach(
-            this.pointingSphere[1],
-            this.scene,
-            this.controllerSphere[1]
-        )
+		this.sphere[0].visible = false
+		this.sphere[1].visible = false
+		
+		this.scene.add( this.sphere[0] )
+		this.scene.add( this.sphere[1] )
 
 
-        var material = new THREE.LineBasicMaterial({
-            color: 0x0000ff
-        })
-
-        var geometry = new THREE.Geometry();
-        geometry.vertices.push(
-            this.controllerSphere[0].position,
-            this.controllerSphere[1].position
-        )
-
-        var line = new THREE.Line( geometry.clone(), material.clone() )
-        this.pointingLine = [
-            new THREE.Line( geometry.clone(), material.clone() ),
-            new THREE.Line( geometry.clone(), material.clone() )
-        ]
-        this.pointingLine[0].visible = false
-        this.pointingLine[1].visible = false
-		this.scene.add( this.pointingLine[0] )
-		this.scene.add( this.pointingLine[1] )
-
-
-        this.pointingSphere[0].visible = false
-        this.pointingSphere[1].visible = false
-
-		// controller.controllerGrabbingSphere[0].intersectsSphere(controller.controllerSphere[0].intersectsSphere)
 
         this.buttonMap = {
 			"R_JOYSTICK": [0, 0],
@@ -178,12 +112,10 @@ class Controller {
 
 		this.grabTimer = []
         this.controller = []
-		this.grippedObjectPosition = [new THREE.Vector3(), new THREE.Vector3()]
 		this.controllerPosition = [new THREE.Vector3(), new THREE.Vector3()]
 		this.controllerRotation = [new THREE.Quaternion(), new THREE.Quaternion()]
 		this.newControllerPosition = [new THREE.Vector3(), new THREE.Vector3()]
 		this.newControllerRotation = [new THREE.Quaternion(), new THREE.Quaternion()]
-		this.grippedObject = [false, false]
 
         this.sphereCollider = new THREE.Sphere()
         this.boxCollider = new THREE.Box3()
@@ -191,23 +123,21 @@ class Controller {
 
         window.addEventListener('buttonpressed', function (e) {
             if (e.detail.button == "R_GRIP") {
-                self.grip(0)
+                self.grab(RIGHT)
             }
             if (e.detail.button == "L_GRIP") {
-                self.grip(1)
+                self.grab(LEFT)
             }
         })
         window.addEventListener('buttonreleased', function (e) {
             if (e.detail.button == "R_GRIP") {
-                self.unGrip(0)
+                self.unGrab(RIGHT)
             }
             if (e.detail.button == "L_GRIP") {
-                self.unGrip(1)
+                self.unGrab(LEFT)
             }
         })
 
-        this.dir = [new THREE.Vector3(), new THREE.Vector3()]
-        this.helperPos = [new THREE.Vector3(), new THREE.Vector3()]
 	}
 
 	update() {
@@ -256,171 +186,153 @@ class Controller {
         if (!object) {
             return false
         }
+        if (!object.geometry) {
+            return false
+        }
+		
 
         if (object.geometry.type == "Geometry") {
-            this.sphereCollider.center.copy(object.position)
             if (object.geometry.boundingSphere === null) {
                 //console.warn("Geometry dont seem to be a sphere")
                 return false
             }
-            this.sphereCollider.radius =
-                (object.geometry.boundingSphere.radius * object.scale.x)
-            if (this.sphereCollider.intersectsSphere(
-                this.mathSphere[rightOrLeft]
-            )) {
+			console.assert(object.getWorldPosition(new THREE.Vector3()) !== "undefined");
+            this.multiMathSphere.center.copy(object.getWorldPosition(new THREE.Vector3()))
+            this.multiMathSphere.radius = object.geometry.boundingSphere.radius
+            if (controller.sphere[rightOrLeft].position.distanceTo(this.multiMathSphere.center)
+				< object.geometry.boundingSphere.radius*2) {
                 return true
             }
         } else if (object.geometry.type == "BoxGeometry") {
             this.boxCollider.setFromObject(object)
-            if (this.boxCollider.intersectsSphere(this.mathSphere[rightOrLeft])) {
+            this.multiMathSphere.center.copy(this.sphere[rightOrLeft].getWorldPosition(new THREE.Vector3()))
+            this.multiMathSphere.radius = this.sphere[rightOrLeft].geometry.boundingSphere.radius
+			console.assert(this.multiMathSphere !== "undefined");
+            if (this.boxCollider.intersectsSphere(this.multiMathSphere)) {
                 return true
             }
         }
         return false
     }
 
+/*
+	allDescendants (node, cb) {
+		for (var i = 0; i < node.children.length; i++) {
+		  var child = node.children[i];
+		  this.allDescendants(child, cb);
+		  cb(child);
+		}
+		this.runningThreads --;
+	}*/
+	
+		
     // check if were intersecting any grabbable objects, if we are, return that object
-    intersectingGrabbableObject(rightOrLeft) {
-		var nearestGrabbable = false
-
-        // get nearest grabbable
-        for (var i = 0; i < this.scene.children.length; i ++) {
-            if (typeof this.scene.children[i].grabbable !== "undefined") {
-                if (this.scene.children[i].grabbable) {
-                    this.mathSphere[rightOrLeft].distanceToPoint(
-                        this.scene.children[i].position
-                    )
-
-                    if (nearestGrabbable) {
-    					if (this.mathSphere[rightOrLeft].distanceToPoint(
-                            nearestGrabbable.position) >
-                            this.mathSphere[rightOrLeft].distanceToPoint(
-                                this.scene.children[i].position)
-                            ) {
-    						nearestGrabbable = this.scene.children[i]
-    					}
-    				} else {
-    					nearestGrabbable = this.scene.children[i]
-    				}
-                }
-            }
+    intersectingFromArray(rightOrLeft, sphereGroup) {
+		if (typeof sphereGroup === "undefined") {
+			console.warn("sphereGroup not an array")
+			console.warn(sphereGroup)
+			var err = new Error();
+			console.warn(err.stack);
+			return null;
+		}
+		if ( sphereGroup == null) {
+			console.warn("sphereGroup not an array")
+			console.warn(sphereGroup)
+			var err = new Error();
+			console.warn(err.stack);
+			return null;
+		}
+		var self = this;
+		this.nearestObject[rightOrLeft] = null
+		
+		
+        for (var i = 0; i < sphereGroup.length; i ++) {
+			if (this.intersecting(sphereGroup[i], rightOrLeft)) {
+				if (this.nearestObject[rightOrLeft]) {
+					if (controller.sphere[rightOrLeft].position.distanceTo(
+						this.nearestObject[rightOrLeft].getWorldPosition(new THREE.Vector3())) >
+						controller.sphere[rightOrLeft].position.distanceTo(
+						sphereGroup[i].getWorldPosition(new THREE.Vector3()))
+						) {
+						this.nearestObject[rightOrLeft] = sphereGroup[i]
+					}
+				} else {
+					this.nearestObject[rightOrLeft] = sphereGroup[i]
+				}
+			}
+			
         }
-
-
-        if (!this.intersecting(nearestGrabbable, rightOrLeft)) {
-            return false
-        } else {
-            return nearestGrabbable
-        }
-        /* moved to intersecting
-        if (!nearestGrabbable) {
-            return false
-        }
-
-        // Assume sphere
-        if (nearestGrabbable.geometry.type == "Geometry") {
-            this.sphereCollider.center.copy(nearestGrabbable.position)
-            if (nearestGrabbable.geometry.boundingSphere === null) {
-                //console.warn("Geometry dont seem to be a sphere")
-                return false
-            }
-            this.sphereCollider.radius =
-                nearestGrabbable.geometry.boundingSphere.radius
-            if (this.sphereCollider.intersectsSphere(
-                this.mathSphere[rightOrLeft]
-            )) {
-                return nearestGrabbable
-            }
-        } else if (nearestGrabbable.geometry.type == "BoxGeometry") {
-            this.boxCollider.setFromObject(nearestGrabbable)
-            if (this.boxCollider.intersectsSphere(this.mathSphere[rightOrLeft])) {
-                return nearestGrabbable
-            }
-        }
-
-        return false*/
+		
+		//if (this.nearestObject[rightOrLeft] != null)
+			//console.log(this.nearestObject[rightOrLeft].name)
+		return this.nearestObject[rightOrLeft];
     }
 
     grabObject(object, rightOrLeft) {
-        var self = this
-        object.scalable = false
-
-        this.controllerPosition[rightOrLeft].copy(
-            this.controllerSphere[rightOrLeft].position
-        )
-        this.controllerRotation[rightOrLeft].copy(
-            this.controllerSphere[rightOrLeft].quaternion
-        )
-
-        this.grippedObject[rightOrLeft] = object
-        this.grippedObjectPosition[rightOrLeft].copy(object.position)
-
-        // ongoing grip, until ungripped
-        this.grabTimer[rightOrLeft] = setInterval(function() {
-            self.newControllerPosition[rightOrLeft].copy(
-                self.controllerSphere[rightOrLeft].position
-            )
-            self.newControllerRotation[rightOrLeft].copy(
-                self.controllerSphere[rightOrLeft].quaternion
-            )
-
-            // move grabbed object
-            var xyz = ["x", "y", "z"]
-            for (var i = 0; i < xyz.length; i++) {
-                object.position[xyz[i]] =
-                self.grippedObjectPosition[rightOrLeft][xyz[i]] +
-                ( self.newControllerPosition[rightOrLeft][xyz[i]] -
-                    self.controllerPosition[rightOrLeft][xyz[i]] )
-            }
-
-            // rotate grabbed object
-            self.newControllerRotation[rightOrLeft].multiplyQuaternions(
-                self.newControllerRotation[rightOrLeft],
-                self.controllerRotation[rightOrLeft].inverse())
-            object.quaternion.multiplyQuaternions(
-                controller.newControllerRotation[rightOrLeft],
-                object.quaternion
-            )
-            self.controllerRotation[rightOrLeft].copy(
-                self.controllerSphere[rightOrLeft].quaternion)
-        },50)
+		THREE.SceneUtils.attach(object, OS.scene, this.sphere[rightOrLeft])
     }
 
-	grip(rightOrLeft) {
-		this.controllerGrabbingSphere[rightOrLeft].visible = true
-		this.controllerSphere[rightOrLeft].visible = false
-        var grabbable = this.intersectingGrabbableObject(rightOrLeft)
+	grab(rightOrLeft) {
+		this.sphere[rightOrLeft].material.opacity = 0.2
+		console.assert(this.grabbableObjects != null)
+		//console.log(this.grabbableObjects)
+        var grabbable = this.intersectingFromArray(rightOrLeft, this.grabbableObjects)
 
         if (grabbable) {
+			
+			var sceneObject = this.getSceneParent(grabbable);
+			if (rightOrLeft == RIGHT && sceneObject.uuid == this.sphere[LEFT].uuid) {
+				detachAllChildren(sceneObject)
+			    sceneObject = this.getSceneParent(grabbable);
+			}
+			if (rightOrLeft == LEFT && sceneObject.uuid == this.sphere[RIGHT].uuid) {
+				detachAllChildren(sceneObject)
+			    sceneObject = this.getSceneParent(grabbable);
+			}
+			
+			if (sceneObject.uuid == OS.camera.uuid) {
+				return null;
+			}
+			
+            this.grabObject(sceneObject, rightOrLeft)
+			
             var event = new CustomEvent('grabstart', {
                 detail: {
                     "rightOrLeft": rightOrLeft,
-                    "object": grabbable
+                    "object": sceneObject
                 }
             })
             window.dispatchEvent(event)
-            this.grabObject(grabbable, rightOrLeft)
 	    }
 	}
+	
+	getSceneParent(object) {
+		if (object.parent == null) {
+			return object;
+		}
+		while(object.parent.type != "Scene") {
+			object = object.parent;
+		}
+		return object
+	}
 
-	unGrip(rightOrLeft) {
-    	this.controllerGrabbingSphere[rightOrLeft].visible = false
-    	this.controllerSphere[rightOrLeft].visible = true
-        if (!this.grippedObject[rightOrLeft]) {
+	unGrab(rightOrLeft) {
+		this.sphere[rightOrLeft].material.opacity = 0.5
+        if (!this.isGrabbing(rightOrLeft)) {
             return
         }
-        this.grippedObject[rightOrLeft].scalable = true
+		
         var event = new CustomEvent('grabend', {
             detail: {
                 "rightOrLeft": rightOrLeft,
-                "object": this.grippedObject[rightOrLeft]
+                "object": this.sphere[rightOrLeft].children[0]
             }
         })
         window.dispatchEvent(event)
 
-
-        this.grippedObject[rightOrLeft] = false
-		clearInterval(this.grabTimer[rightOrLeft])
+		detachAllChildren(this.sphere[rightOrLeft])
+		
+		//clearInterval(this.grabTimer[rightOrLeft])
 	}
 
     handleButtons(controller, rightOrLeft) {
@@ -481,8 +393,41 @@ class Controller {
             }
         }
     }
+	
+	isGrabbing(rightOrLeft) {
+		if (controller.sphere[rightOrLeft].children.length > 0) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
+	grabbedObject(rightOrLeft) {
+		this.getGrabbedObject(rightOrLeft)
+	}
+	
+	getGrabbedObject(rightOrLeft) {
+		if (!this.isGrabbing(rightOrLeft)) {
+			return null
+		}
+		var grabGroup = controller.sphere[rightOrLeft].children;
+		if (grabGroup.length > 1) {
+			if (spheres.isSphere(grabGroup[0])) {
+				if (spheres.getGroup(grabGroup[0]) > 0) {
+					return this.intersectingFromArray(rightOrLeft, spheres.getGroup(grabGroup[0]));
+				} else {
+					return grabGroup[0];
+				}
+			}
+			return this.intersectingFromArray(rightOrLeft, grabGroup[0]);
+		}
+		return controller.sphere[rightOrLeft].children[0];
+	}
 
 	handleController(controller, rightOrLeft) {
+		if (OS.display !== "undefined") {
+			this.sphere[rightOrLeft].visible = true
+		}
         this.controller[rightOrLeft] = controller
         //todo: optimize
 		var position = [
@@ -497,52 +442,13 @@ class Controller {
 			controller.pose.orientation[2],
 			controller.pose.orientation[3]
 		]
-		/*
-		var orientation = new THREE.Vector4(
-			controller.pose.orientation[0] + this.rotationFix[rightOrLeft].x,
-			controller.pose.orientation[1] + this.rotationFix[rightOrLeft].y,
-			controller.pose.orientation[2] + this.rotationFix[rightOrLeft].z,
-			controller.pose.orientation[3] + this.rotationFix[rightOrLeft].w
-		)*/
 
+		this.sphere[rightOrLeft].position.fromArray(position)
+		this.sphere[rightOrLeft].quaternion.fromArray(orientation)
 
-		//this.controllerObject[rightOrLeft].quaternion.x += this.rotationFix[rightOrLeft].x
-		//this.controllerObject[rightOrLeft].quaternion.y += this.rotationFix[rightOrLeft].y
-		//this.controllerObject[rightOrLeft].quaternion.z += this.rotationFix[rightOrLeft].z
-		//this.controllerObject[rightOrLeft].quaternion.w += this.rotationFix[rightOrLeft].w
-
-		this.controllerSphere[rightOrLeft].position.fromArray(position)
-		this.controllerSphere[rightOrLeft].quaternion.fromArray(orientation)
-		this.controllerGrabbingSphere[rightOrLeft].position.fromArray(position)
-		this.controllerGrabbingSphere[rightOrLeft].quaternion.fromArray(orientation)
-		this.mathSphere[rightOrLeft].center.fromArray(position)
-
-		this.scene.updateMatrixWorld()
+		//this.scene.updateMatrixWorld()
 
 		this.handleButtons(controller, rightOrLeft)
-
-        // todo: optimize
-        this.helperPos[rightOrLeft].setFromMatrixPosition(
-            this.pointingSphere[rightOrLeft].matrixWorld
-        )
-
-        this.dir[rightOrLeft].subVectors(
-            this.helperPos[rightOrLeft],
-            this.controllerSphere[rightOrLeft].position
-        ).normalize()
-
-		this.raycaster.set(
-            this.controllerSphere[rightOrLeft].position,
-            this.dir[rightOrLeft]
-        )
-		// calculate objects intersecting the picking ray
-		var intersects = this.raycaster.intersectObjects( this.scene.children )
-        // console.log(intersects)
-        this.pointingLine[rightOrLeft].visible = false
-        if (intersects.length > 0) {
-            this.point(intersects, rightOrLeft)
-        }
-
 
         window.dispatchEvent(this.updateEvent[rightOrLeft])
 	}

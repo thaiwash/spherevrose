@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 	<head>
-		<title>three.js webvr - cubes</title>
+		<title>Zen programming</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 		<!-- Origin Trial Token, feature = WebVR (For Chrome M62+), origin = https://threejs.org, expires = 2018-04-03 -->
@@ -26,19 +26,36 @@
 		<script src="js/lib/SceneUtils.js"></script>
 		<script src="js/lib/socket.io.js"></script>
 		<script src="js/lib/d3.min.js"></script>
-
+		<script src="js/lib/OrbitControls.js"></script>
+		
         <script src="js/processOptimization.js"></script>
         <script src="js/controller.js"></script>
         <script src="js/headText.js"></script>
         <script src="js/sphere.js"></script>
-        <script src="js/fileSystem.js"></script>
+        <!-- script src="js/fileSystem.js"></script -->
         <script src="js/canvasObject.js"></script>
         <script src="js/scaler.js"></script>
         <script src="js/autoSave.js"></script>
         <script src="js/desktop.js"></script>
         <script src="js/keyboard.js"></script>
         <script src="js/textEditor.js"></script>
-        <script src="js/stereoCamera.js"></script>
+		<script src="js/stereoCamera.js"></script>
+		<script src="js/util.js"></script>
+
+		<script src="modules/OSModule.js"></script>
+		<script src="modules/CarShow/index.js"></script>
+		<script src="modules/ModelLoader/ModelLoader.js"></script>
+		<script src="modules/TextLoader/TextLoader.js"></script>
+		<script src="modules/Animate/index.js"></script>
+		<script src="modules/InspectBox/index.js"></script>
+		<script src="modules/Compiler/index.js"></script>
+		<script src="modules/FileSystem/FileSystem.js"></script>
+		<script src="modules/qMaze/Builder.js"></script>
+		<script src="modules/Raycast/Raycast.js"></script>
+		<script src="modules/FIMK/FIMK.js"></script>
+		<script src="modules/Polygon/Polygon.js"></script>
+		<script src="modules/O/O.js"></script>
+		<script src="modules/Sockets/Sockets.js"></script>
 
 		<script>
 
@@ -47,23 +64,26 @@ class ShereOS {
     constructor() {
         var self = this
         this.modules = {}
-
         this.paused = false;
 
 		this.container = document.createElement( 'div' );
 		document.body.appendChild( this.container );
 
 		this.scene = new THREE.Scene();
-		this.scene.background = new THREE.Color( 0xECF8FF );
+		this.scene.background = new THREE.Color( 0x0040ff );
 
-		this.camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.1, 10 );
+		this.camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.1, 1000 );
+		this.camera.position.set( 0, 0, 0 );//
 		this.scene.add( this.camera );
-
+		this.controls = new THREE.OrbitControls( this.camera );
+		this.controls.target.set( 0, 0, 0 );
+		this.controls.object = this.camera;
+		this.controls.update();
 
 		this.scene.add( new THREE.HemisphereLight( 0x606060, 0x404040 ) );
-
-		this.light = new THREE.DirectionalLight( 0xffffff );
-		this.light.position.set( 1, 1, 1 ).normalize();
+		this.light = new THREE.AmbientLight( 0x404040 );
+		//this.light = new THREE.DirectionalLight( 0xffffff );
+		//this.light.position.set( 1, 1, 1 ).normalize();
 		this.scene.add( this.light );
 
 		this.renderer = new THREE.WebGLRenderer( { antialias: true } );
@@ -72,12 +92,39 @@ class ShereOS {
 		this.renderer.vr.enabled = true;
 		this.container.appendChild( this.renderer.domElement );
 
-        document.body.appendChild( WEBVR.createButton( this.renderer , function(display) {
-            self.display = display
-        } ) );
+				
 
         this.loadFont()
+		
+		
+		var cube = new THREE.Mesh( new THREE.CubeGeometry( 200, 200, 200 ), new THREE.MeshNormalMaterial() );
+		cube.position.y = 0
+		// add the object to the scene
+		this.scene.add( cube );
+		this.enableVR()
     }
+	
+	enableVR() {
+		var self = this
+		document.body.appendChild( WEBVR.createButton( this.renderer , function(display) {
+           self.display = display
+        } ) );
+	}
+	
+	defaultLocation() {
+		console.assert(typeof headText !== "undefined", "default spawning location requires headText module") 
+		return headText.spawningLocation()
+	}
+	
+	defaultQuaternion() {
+		console.assert(typeof headText !== "undefined", "default spawning location requires headText module") 
+		return headText.spawningQuaternion()
+	}
+	
+	defaultObject() {
+		console.assert(typeof headText !== "undefined", "default spawning location requires headText module") 
+		return headText.fpsText
+	}
 
     controllerWrapper() {
         var self = this
@@ -106,23 +153,51 @@ class ShereOS {
     }
 
     initModules() {
-    	this.modules["controller"] = new Controller()
-        this.modules["headText"] = new HeadText()
+		this.modules["po"] = new PerformanceOptimization()
+		this.modules["headText"] = new HeadText()
+		this.modules["controller"] = new Controller()
+        //this.modules["scaler"] = new Scaler()
         //this.modules["save"] = new autoSave()
         //this.modules["spheres"] = new Sphere()
-        this.modules["fs"] = new FileSystem()
-        this.modules["po"] = new PerformanceOptimization()
-        //this.modules["scaler"] = new Scaler()
+        //this.modules["fs"] = new FileSystem()
+		//this.modules["carShow"] = new CarShow()
         //this.modules["container"] = new Container()
         //this.modules["desktop"] = new Desktop()
         //this.modules["textEditor"] = new TextEditor()
-        this.modules["keyboard"] = new Keyboard()
-        this.modules["zed"] = new Zed()
+        //this.modules["keyboard"] = new Keyboard()
+        //this.modules["zed"] = new Zed()
+		//this.modules["modelLoader"] = new ModelLoader()
+		//this.modules["textLoader"] = new TextLoader()
+		//this.modules["animate"] = new Animate()
+		//this.modules["inspectBox"] = new InspectBox()
+		//this.modules["compiler"] = new Compiler()
+		//this.modules["lazer"] = new Raycast()
+		//this.modules["builder"] = new Builder()
+		//this.modules["fimk"] = new FIMK()
+		//this.modules["polygon"] = new Polygon()
+		this.modules["o"] = new O()
+		this.modules["sockets"] = new Sockets()
 
         // global context for backwards compatibility
         for (var i = 0; i < Object.keys(this.modules).length; i ++) {
             var key = Object.keys(this.modules)[i]
             window[key] = this.modules[key]
+			
+        }
+		
+        for (var i = 0; i < Object.keys(this.modules).length; i ++) {
+            var module = this.modules[Object.keys(this.modules)[i]]
+            if (typeof module.requires !== "undefined") {
+				for (var i2 = 0; i2 < module.requires.length; i2 ++) {
+					if (typeof this.modules[module.requires[i2]] === "undefined") {
+						console.warn(Object.keys(this.modules)[i] + " requires "+ module.requires[i2])
+					}
+				}
+			}
+			this.modules[key]
+            if (typeof module.init === "function") {
+                module.init()
+            }
         }
     }
 
@@ -142,6 +217,8 @@ class ShereOS {
             //console.log("No focus on window")
             //return
         }
+		
+		this.controls.update();
 
         for (var i = 0; i < Object.keys(this.modules).length; i ++) {
             var module = this.modules[Object.keys(this.modules)[i]]
@@ -153,9 +230,14 @@ class ShereOS {
 }
 
 var OS = new ShereOS()
-var socket = io()
 
-
+function isVoid(variable) {
+	if (typeof variable === "undefined") {
+        return true
+	}
+    return false
+}
+/*
 class Container {
     constructor() {
         var self = this
@@ -220,7 +302,6 @@ class Container {
         if (object) {
             console.log(false);
         }
-        */
     }
 
     enterWorld(object) {
@@ -243,7 +324,7 @@ class Container {
 
         spheres.removeStack(object)
     }
-}
+}*/
 		</script>
 	</body>
 </html>

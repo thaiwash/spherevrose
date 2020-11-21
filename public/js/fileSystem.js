@@ -1,6 +1,6 @@
 
 class FileSystem {
-    constructor() {
+    init() {
         this.scene = OS.scene
         this.depth = 1
         this.fsSpheres = []
@@ -13,6 +13,13 @@ class FileSystem {
         this.fsData(function(data) {
             self.calculateNodes(data)
         })
+		
+		
+		window.addEventListener('keypress', function(e) {
+			if (e.key == "n") {
+				self.spawnFsObject()
+			}
+		})
 
         window.addEventListener('buttonpressed', function (e) {
             if (controller.buttonPressed["L_TRIGGER"]) {
@@ -38,7 +45,7 @@ class FileSystem {
             }
 
             if (e.detail.button == "B") {
-                var sphere = controller.intersectingGrabbableObject(0)
+                var sphere = controller.intersectingFromArray(RIGHT, spheres.spheres)
                 if (sphere) {
                     self.remove(sphere)
                 }
@@ -291,7 +298,7 @@ class FileSystem {
     }
 
     intersects(rightOrLeft) {
-        var sphere = controller.intersectingGrabbableObject(rightOrLeft)
+        var sphere = controller.intersectingFromArray(rightOrLeft, spheres.spheres)
         if (!sphere) {
             return
         }
@@ -364,7 +371,7 @@ class FileSystem {
     spawnFsObject() {
         var fsSphere = this.spawnSphere(
             this.sphereScale,
-            controller.controllerSphere[1].position,
+            headText.spawningLocation(),
             "dir"
         )
 
@@ -376,6 +383,7 @@ class FileSystem {
     }
 
     updateChildren(fsSphere) {
+		
         fsSphere.path = this.nodes[0].path
         if (typeof fsSphere.spheres !== "undefined") {
             //console.log(fsSphere.spheres.length)

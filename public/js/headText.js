@@ -23,7 +23,7 @@ class HeadText {
 
 
         var materials = [
-            new THREE.MeshBasicMaterial( { color: 0x000000, overdraw: 0.5 } )
+            new THREE.MeshBasicMaterial( { color: 0xFFFFFF, overdraw: 0.5 } )
         ];
 
         var textGeometry = new THREE.Mesh( geometry, materials );
@@ -50,7 +50,7 @@ class HeadText {
 
 
         var materials = [
-            new THREE.MeshBasicMaterial( { color: 0x000000, overdraw: 0.5 } )
+            new THREE.MeshBasicMaterial( { color: 0xFFFFFF, overdraw: 0.5 } )
         ];
 
         var textGeometry = new THREE.Mesh( geometry, materials );
@@ -58,10 +58,23 @@ class HeadText {
         //scene.add(textGeometry)
         OS.camera.add(textGeometry)
 
-        //textGeometry.position.set(-0.5,0.2,-0.5)
         textGeometry.position.set(-0.2,0.1,-0.5)
+        //textGeometry.position.set(-0.5,0.2,-0.5)
         this.fpsText = textGeometry
     }
+	
+	spawningLocation() {
+		var loc = new THREE.Vector3()
+		this.fpsText.getWorldPosition(loc)
+		loc.x = loc.x + 0.1
+		return loc
+	}
+	
+	spawningQuaternion() {
+		var quat = new THREE.Quaternion()
+		this.fpsText.getWorldQuaternion(quat);
+		return quat
+	}
 
     add(text) {
         if (text.length > 100) {
@@ -93,7 +106,7 @@ class HeadText {
     }
 
     updateText() {
-        if (this.log.length > 10) {
+        if (this.log.length > 3) {
             //text = text.substring(text.length-200, text.length);
             this.log.shift()
         }

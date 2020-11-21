@@ -1,24 +1,36 @@
+
+// manualize
 class autoSave {
 	constructor(onload) {
-		this.scene = OS.scene
-		var self = this
-
-		this.tick = setInterval(function () {
-			self.saveObjects()
+		var self = this;
+		this.scene = setInterval(function() {
+			self.saveObjects();
+console.log("saving");
+			//OS.socket.emit("save project", { file: "./public/scene_savefile.json", data: JSON.stringify(OS.scene.toJSON()).toString() } )
 		}, 3000)
-
-		this.loadObjects(function() {
-            if (typeof onload !== "undefined") {
-                onload()
-            }
-		})
+console.log("loading");
+		this.loadObjects(
+			/*OS.socket.on("load project callback", function(data) {
+				data.saveData
+			})
+			OS.socket.emit("load project", {file: "./public/scene_savefile.json"})
+			*/function() {}
+		)
         this.lastSaveData = ""
+		
+	}
+	
+	init() {
+		socket.emit('load project', {"file": "public/modules/qmaze/jsvr.json"})
+        socket.on("load project callback", function (data) {
+            spheres.jsonToSphere(data.saveData)
+        } )
 	}
 
     // this is done once everytime the page loads
 	loadObjects(cb) {
 		socket.on("load objects", function(data) {
-			console.log(data)
+			//console.log(data)
             data = JSON.parse(data)
             if (typeof data.spheres !== "undefined") {
                 //console.log(data.spheres.length)
@@ -46,36 +58,21 @@ class autoSave {
 		})
 		socket.emit("load object properties")
 	}
-
     // thiThis is as one is called every 3 seconds
 	saveObjects() {
-		var saveSphere = []
-		for (var i = 0; i < this.scene.children.length; i ++) {
-			var child = this.scene.children[i]
-			if (child.name.substr(0, 6) == "Sphere") {
-				//if (typeof this.savedProperties[child.name] === "undefined") {
-				//	this.savedProperties[child.name] = {}
-				//}
-
-				// see if the position has changedWil
-				//if (child.poIsition.x != this.savedProperties[child.tablename].x) {Hello
-				//	this.savedProperties[child.name].x = child.poshttps://www.youtube.com/watch?v=CN__9thGNCkqqition.x
-                var sphere = {
-                    "name": child.name,
-                    "position": child.position.toArray(),
-                    "quaternion": child.quaternion.toArray(),
-                    "scale": child.scale.toArray(),
-                    "text": child.children[0].geometry.parameters.text
-                }
-
-                //if (typeof spheres.byName(child.name).link !== "undefined") {
-                //    sphere.link = spheres.byName(child.name).link.name
-                //}
-
-				saveSphere.push(sphere)
+		var saveSpheres = []
+		for (var i = 0; i < spheres.spheres.length; i ++) {
+			var sphere = {
+				"name": spheres.spheres[i].name,
+				"position": spheres.spheres[i].position.toArray(),
+				"quaternion": spheres.spheres[i].quaternion.toArray(),
+				"scale": spheres.spheres[i].scale.toArray(),
+				"text": spheres.getText(spheres.spheres[i])
 			}
+			//console.log("saving "+spheres.spheres[i].name)
+			saveSpheres.push(sphere);
 		}
-    	var saveData = {"spheres": saveSphere}
+    	var saveData = {"spheres": saveSpheres}
 
         var saveLinks = []
         for (var i = 0; i < spheres.links.length; i ++) {
@@ -88,14 +85,14 @@ class autoSave {
         saveData.links = saveLinks
 
 		var data = JSON.stringify(saveData)
+    	//console.log(data)
         if (data != this.lastSaveData) {
-			socket.emit("save object properties", data)
+			socket.emit("save project", {"file": "public/modules/qmaze/jsvr.json", "data":data})
             this.lastSaveData = data
-    	    //console.log("save objects")
-    	    //console.log(data)
+    	    console.log("save objects")
     	}
 	}
-
+	
     reset() {
         
     }

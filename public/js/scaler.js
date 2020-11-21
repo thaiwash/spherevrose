@@ -2,167 +2,230 @@
 class Scaler {
     constructor() {
 		var self = this
+		window.addEventListener('joystickevent', function (e) {
+            if (e.detail.rightOrLeft == 0) {
+				if (controller.getGrabbedObject(0) != null) {
+					//self.scale(e.detail.horizontalAxe)
+					self.scaleObject(e.detail.horizontalAxe)
+					//
+				}
+			}
+        })
+    }
+	
+	init() {
+		var self = this
         this.scene = OS.scene
-        this.exists = false
-
-        /*
-        window.addEventListener('buttonpressed', function (e) {
-            //console.log(self.exists)
-            if (e.detail.button == "L_JOYSTICK") {
-                if (!self.exists) {
-                    self.spawnSphere()
-                } else {
-                    self.deSpawnSphere()
-                }
-            }
-        })*/
-        window.addEventListener('joystickevent', function (e) {
-            if (!self.exists) {
-                return
-            }
-            if (e.detail.rightOrLeft == 1) {
-                //self.scaleWorld(e.detail.horizontalAxe)
-                self.scaleGrabbedObject(e.detail.horizontalAxe)
-            }
+		
+		self.originalScale = new THREE.Vector3()
+        
+        window.addEventListener('grabstart', function (e) {
+            if (e.detail.rightOrLeft == 0) {
+				self.originalScale.copy(controller.sphere[0].scale)
+				self.scalerSphere.visible = true
+			}
         })
-    }
-
-    scaleGrabbedObject(axe) {
-        if (!controller.grippedObject[0]) {
-            return
-        }
-
-        this.scalerSphere.updateMatrixWorld()
-        THREE.SceneUtils.attach(
-            controller.grippedObject[0],
-            this.scene,
-            this.scalerSphere
-        )
-
-        var scale = 1 + (axe/50)
-        this.scalerSphere.scale.set(scale,scale,scale)
-        this.scalerSphere.updateMatrixWorld()
-        //console.log(this.scalerSphere.children.length)
-
-        while (this.scalerSphere.children.length) {
-            THREE.SceneUtils.detach(
-                this.scalerSphere.children[0],
-                this.scalerSphere,
-                this.scene
-            )
-            this.scalerSphere.updateMatrixWorld()
-        }
-        this.scalerSphere.scale.set(1,1,1)
-
-        var event = new CustomEvent('scaling', {
-            detail: {
-                "sphere": controller.grippedObject[0]
-            }
+        window.addEventListener('grabend', function (e) {
+            if (e.detail.rightOrLeft == 0) {
+				controller.sphere[0].scale.copy(self.originalScale)
+				self.scalerSphere.visible = false
+			}
         })
-        window.dispatchEvent(event)
+		this.scalerSphere = new THREE.Mesh( spheres.sphereGeom.clone(), spheres.blueMaterial.clone() )
+        self.scalerSphere.material.color.setHex( 0x55FF55 )
+		this.scalerSphere.material.opacity = 0.6
+		self.scalerSphere.visible = false
+		//this.scalerSphere = controller.sphere[0].clone()
+		OS.scene.add(this.scalerSphere)
+		
+		
+		this.packingEventTrigger = false
+		this.unPackingEventTrigger = false
     }
 
-    scaleWorld(axe) {
-        var group = new THREE.Group()
-        function getScalable() {
-            for (var i = 0; i < this.scene.children.length; i ++) {
-                if (typeof this.scene.children[i].scalable !== "undefined") {
-                    if (this.scene.children[i].scalable) {
-                        //group.add(scene.children[i])
-                        //console.log("scaling " + scene.children[i].name)
-                        return this.scene.children[i]
-                    }
-                }
-            }
-            return false
-        }
-
-        while(getScalable()) {
-            //this.scalerSphere.updateMatrixWorld()
-            THREE.SceneUtils.attach(getScalable(), this.scene, this.scalerSphere)
-        }
-
-        var scale = 1 + (axe/50)
-        this.scalerSphere.scale.set(scale,scale,scale)
-        //this.scalerSphere.updateMatrixWorld()
-        //console.log(this.scalerSphere.children.length)
-        while (this.scalerSphere.children.length) {
-            THREE.SceneUtils.detach(
-                this.scalerSphere.children[0],
-                this.scalerSphere,
-                this.scene
-            )
-            //this.scalerSphere.updateMatrixWorld()
-        }
-        this.scalerSphere.scale.set(1,1,1)
-        //for (var i = 0; i < this.scalerSphere.children.length; i ++) {
-        //}
-        //group.scale.set(0.5,0.5,0.5)
-        //scene.add(group)      THREE.SceneUtils.detach(scaler.scalerSphere.children[0], scaler.scalerSphere, scene)
-        //console.log(this.scalerSphere.children)
-        //group.scale.addScaler(0.5)
-        //for (var i = 0; i < group.children.length; i ++) {
-        //    this.unGroup(group.children[i])
-        //}
-        //console.log(group.children)
-        //scene.remove(group)
-        //this.group = group
-
-
-    }
-
-    scaleWorld2(axe) {
-        var group = new THREE.Group()
-        for (var i = 0; i < this.scene.children.length; i ++) {
-            if (typeof this.scene.children[i].scalable !== "undefined") {
-                if (this.scene.children[i].scalable) {
-                    group.add(this.scene.children[i])
-                }
-            }
-        }
-        this.this.scene.add(group)
-        console.log(group.children)
-        //group.scale.addScaler(0.5)
-        for (var i = 0; i < group.children.length; i ++) {
-            this.unGroup(group.children[i])
-        }
-        console.log(group.children)
-        this.scene.remove(group)
-        this.group = group
-    }
-
-    spawnSphere() {
-		// radius, segments along width, segments along height
-		var sphereGeom =  new THREE.SphereGeometry(
-            (40/1000)*1.0,
-            (32/1000)*1.0,
-            (16/1000)*1.0
-        )
-
-		var blueMaterial = new THREE.MeshBasicMaterial( {
-            color: 0x0000FF,
-            transparent: true,
-            opacity: 0.1
-        } );
-		this.scalerSphere = new THREE.Mesh( sphereGeom.clone(), blueMaterial )
-		this.scalerSphere.position.copy(controller.controllerSphere[0].position)
-        this.scene.add(this.scalerSphere)
-        this.exists = true
-        this.scalerSphere.visible = false
-    }
-
-    deSpawnSphere() {
-        this.scene.remove(this.scalerSphere)
-        this.exists = false
-    }
-
+	//init() {
+		//this.scalerSphere = controller.sphere[0].clone()
+		//OS.scene.add(this.scalerSphere)
+	//}
+	
     update() {
-        if (this.exists) {
-            this.scalerSphere.position.copy(
-                controller.controllerSphere[0].position
-            )
-        } else {
-            this.spawnSphere()
+		this.scalerSphere.position.copy(controller.sphere[0].position)
+		this.scalerSphere.rotation.copy(controller.sphere[0].rotation)
+    }
+	
+	
+	
+	scaleUnlink(axe) {
+
+		console.assert(typeof(axe) !== "undefined");
+		console.assert(spheres.isSphere(controller.getGrabbedObject(0)));
+
+		var scale = 1 + (axe/50)
+		var object = controller.getGrabbedObject(0);
+		
+		console.assert(object)
+		
+		var realObj = controller.intersectingFromArray(0, spheres.getGroup(object));
+		if(!realObj) {return;}
+		var position = getMatrixPosition(realObj);
+		//var position = object.position;
+		object.scale.set(object.scale.x * scale, object.scale.y * scale, object.scale.z * scale)
+		
+		if (spheres.hasLinks(controller.getGrabbedObject(0))) {
+			console.assert(typeof(realObj) !== "undefined");
+			console.assert(typeof(spheres.getGroup(object).length)  !== "undefined")
+			console.assert(realObj);
+			//console.log(object)
+			//console.log(spheres.getGroup(object))
+			if( object == null) {
+				return;
+			}
+			console.log(object)
+			//if (realObj.id != object.id) {
+			//	console.log("confirm")
+			//}
+				//spheres.makeMaster(realObj)
+			var newPosition = getMatrixPosition(realObj)
+			
+			console.log((position.x))
+			console.log((newPosition.x))
+			console.log((newPosition.x - position.x))
+			console.log(position.x)
+			console.log(newPosition.x)
+			object.position.x = object.position.x + (newPosition.x - position.x)
+			object.position.y = object.position.y + (newPosition.y - position.y)
+			object.position.z = object.position.z + (newPosition.z - position.z)
+		}
+		return;
+		
+			/*var sphere = spheres.add(controller.sphere[0].position)
+			sphere.add(object)
+			object = sphere;
+			object.scale.set(object.scale.x * scale, object.scale.y * scale, object.scale.z * scale)*/
+	}
+	
+	
+	
+	scaleWithController(axe) {
+		var scale = 1 + (axe/50)
+		var object = controller.getGrabbedObject(0);
+		console.log(" hello")
+		var saveScale = new THREE.Vector3()
+		saveScale.copy(controller.sphere[0].scale)
+		console.log("1")
+		controller.sphere[0].scale.set(controller.sphere[0].scale.x * scale, controller.sphere[0].scale.y * scale, controller.sphere[0].scale.z * scale)
+		console.log("2")
+		OS.scene.updateMatrixWorld()
+		THREE.SceneUtils.detach(object, OS.scene, controller.sphere[0])
+		console.log("3")
+		controller.sphere[0].scale.copy(this.originalScale)
+		OS.scene.updateMatrixWorld()
+		console.log("4")
+		console.log(object)
+		console.log(controller.sphere[0])
+		console.log(OS.scene)
+		THREE.SceneUtils.attach(object, OS.scene, controller.sphere[0])
+		OS.scene.updateMatrixWorld()
+	}
+	
+	scaleObject(axe) {
+		var scale = 1 + (axe/50)
+		var object = controller.getGrabbedObject(0);
+		controller.sphere[0].scale.set(controller.sphere[0].scale.x * scale, controller.sphere[0].scale.y * scale, controller.sphere[0].scale.z * scale)
+		
+		if (controller.getGrabbedObject(0)) {
+			//this.scaleCheck(object)
+		}
+	}
+	
+	done() {
+		controller.sphere[0].scale.copy(this.originalScale)
+		this.scalerSphere.visible = false
+	}
+	
+    scaleCheck(object) {
+        //controller.multiMathSphere.center.copy(object.position)
+        if (controller.sphere[0].scale.x < this.scalerSphere.scale.x /2 ) {
+			if (!this.packingEventTrigger) {
+				this.unPackingEventTrigger = false
+				this.packingEventTrigger = true
+				console.log("packing event")
+				
+				this.done()
+				
+				spheres.pack(controller.getGrabbedObject(0))
+				
+			}
+		}
+		
+		if (controller.sphere[0].scale.x > this.scalerSphere.scale.x*2) {
+			if (!this.unPackingEventTrigger) {
+				this.unPackingEventTrigger = true
+				this.packingEventTrigger = false
+				console.log("unpacking event")
+				spheres.unpack(controller.getGrabbedObject(0))
+				this.done()
+			}
+		}
+				//this.eventTrigger = false
+			
+		
+/*
+        this.mathSphere.center.copy(object.position)
+        if ((object.geometry.boundingSphere.radius * object.scale.x) >
+            this.mathSphere.distanceToPoint(OS.camera.position)) {
+            this.enterWorld(object)
         }
+        //console.log()
+        //console.log(this.mathSphere.distanceToPoint(OS.camera.position))
+        if ((object.geometry.boundingSphere.radius * object.scale.x) >
+            this.mathSphere.distanceToPoint(OS.camera.position)) {
+            this.enterWorld(object)
+        }
+
+        var isWithinControllerSphere = true
+        for (var i = 0; i < object.children.length; i ++) {
+
+            if (object.children[i].geometry.type == "Geometry") {
+                //console.log(i + "sphere")
+                this.childPosition = new THREE.Vector3()
+                this.childScale = new THREE.Vector3()
+                object.children[i].getWorldPosition(this.childPosition)
+                object.children[i].getWorldScale(this.childScale)
+                this.mathSphere.center.copy(this.childPosition)
+                //console.log(this.childPosition)
+                //console.log(this.childScale.x)
+                var childRadius = (
+                    object.children[i].geometry.boundingSphere.radius *
+                    this.childScale.x
+                )
+                //console.log(childRadius)
+                //console.log(object.children[i].geometry.boundingSphere.radius)
+                var distanceToControllerCenter = this.mathSphere.distanceToPoint(
+                    controller.controllerSphere[0].position
+                )
+                //console.log(distanceToControllerCenter)
+                //console.log(controller.controllerSphere[0].geometry.boundingSphere.radius)
+            //object.children[i].material.color.setHex( 0x000000 )
+                //console.log(childRadius+" + "+distanceToControllerCenter + "<"+ controller.controllerSphere[0].geometry.boundingSphere.radius)
+                if (childRadius + distanceToControllerCenter < controller.controllerSphere[0].geometry.boundingSphere.radius) {
+                    //console.log("true")
+                    object.children[i].material.color.setHex( 0x000000 )
+                } else {
+                    isWithinControllerSphere = false
+                }
+            }
+        }
+        // known bug, grabbed shprere has no within check
+        //console.log(isWithinControllerSphere)
+
+        if (isWithinControllerSphere && (spheres.fileName(object).substr(0, 6) != "Sphere")) {
+            this.exitWorld(object)
+        }
+        for (object)
+        if (object) {
+            console.log(false);
+        }
+        */
     }
 }

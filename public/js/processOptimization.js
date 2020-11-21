@@ -39,7 +39,12 @@ class PerformanceOptimization {
             return self.tenSecHistory[9]
         }
     }
-
+	
+	stackTrace() {
+		var err = new Error();
+		return err.stack;
+	}
+	
     call(code) {
         // limit processing power to 100ms/s
         if (this.totalCost > this.tenSecHistory[0].IPS) {
@@ -54,6 +59,7 @@ class PerformanceOptimization {
         } catch (e) {
             if (e) {
                 console.warn(e.message);
+				this.stackTrace()
                 cost = 0
             }
         }
